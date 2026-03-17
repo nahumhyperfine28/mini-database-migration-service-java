@@ -1,0 +1,12 @@
+target/
+.idea/
+.vscode/
+.DS_Store
+.env
+checkpoint/checkpoint.json
+checkpoint/*.tmp
+*.log
+*.iml
+.classpath
+.project
+.settings/

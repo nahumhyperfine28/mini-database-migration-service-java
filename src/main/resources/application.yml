@@ -1,0 +1,46 @@
+spring:
+  main:
+    web-application-type: none
+    banner-mode: "off"
+
+logging:
+  level:
+    root: INFO
+    com.example.migrationservice: INFO
+    org.springframework.jdbc.core: INFO
+
+migration:
+  # Source MySQL connection used for schema discovery, snapshot reads, and binlog position capture.
+  source:
+    host: ${MYSQL_HOST:localhost}
+    port: ${MYSQL_PORT:3307}
+    database: ${MYSQL_DATABASE:source_db}
+    schema: ${MYSQL_SCHEMA:source_db}
+    username: ${MYSQL_USERNAME:migration_user}
+    password: ${MYSQL_PASSWORD:migration_password}
+  # Target PostgreSQL connection used for table creation and replicated writes.
+  target:
+    host: ${POSTGRES_HOST:localhost}
+    port: ${POSTGRES_PORT:5433}
+    database: ${POSTGRES_DATABASE:target_db}
+    schema: ${POSTGRES_SCHEMA:public}
+    username: ${POSTGRES_USERNAME:migration_user}
+    password: ${POSTGRES_PASSWORD:migration_password}
+  # Snapshot copy tuning.
+  full-load:
+    batch-size: ${FULL_LOAD_BATCH_SIZE:200}
+  # Binlog reader tuning.
+  cdc:
+    server-id: ${CDC_SERVER_ID:5401}
+    keepalive-interval-ms: 1000
+    connect-timeout-ms: 5000
+  # File-backed checkpoint location used to resume CDC after restart.
+  checkpoint:
+    file: ${CHECKPOINT_FILE:checkpoint/checkpoint.json}
+  # Retries for transient target-side write failures.
+  retry:
+    max-attempts: 3
+    delay-ms: 500
+  # Optional explicit table allow-list. Leave empty to replicate the whole source schema.
+  tables:
+    include: []

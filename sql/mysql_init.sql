@@ -1,0 +1,51 @@
+CREATE DATABASE IF NOT EXISTS source_db;
+USE source_db;
+
+CREATE TABLE IF NOT EXISTS customers (
+    customer_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(200) NOT NULL UNIQUE,
+    full_name VARCHAR(150) NOT NULL,
+    status VARCHAR(30) NOT NULL,
+    loyalty_points INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS products (
+    product_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    sku VARCHAR(64) NOT NULL UNIQUE,
+    product_name VARCHAR(150) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS orders (
+    order_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    customer_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    quantity INT NOT NULL,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    order_status VARCHAR(30) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES customers (customer_id),
+    CONSTRAINT fk_orders_product FOREIGN KEY (product_id) REFERENCES products (product_id)
+);
+
+CREATE TABLE IF NOT EXISTS inventory (
+    inventory_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    product_id BIGINT NOT NULL,
+    warehouse_code VARCHAR(20) NOT NULL,
+    available_quantity INT NOT NULL,
+    reserved_quantity INT NOT NULL DEFAULT 0,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_inventory_product FOREIGN KEY (product_id) REFERENCES products (product_id)
+);
+
+CREATE USER IF NOT EXISTS 'migration_user'@'localhost' IDENTIFIED BY 'migration_password';
+GRANT ALL PRIVILEGES ON source_db.* TO 'migration_user'@'localhost';
+GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'migration_user'@'%';
+GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'migration_user'@'localhost';
+FLUSH PRIVILEGES;
